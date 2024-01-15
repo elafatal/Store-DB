@@ -1,0 +1,96 @@
+
+create table customer (
+  customer_id serial primary key ,
+  first_name varchar (250) ,
+  last_name varchar (250) ,
+  phone_number text ,
+  address_id text
+);
+
+create table address (
+  address_id serial primary key ,
+  postal_code varchar (200),
+  country varchar (150) ,
+  city varchar (150) ,
+  exacte_address text 
+);
+
+create table store (
+  store_id serial primary key ,
+  name varchar (200),
+  address_id int 
+);
+
+create table inventory (
+  inventory_id int ,
+  product_id  int ,
+  store_id int ,
+  quantity int
+);
+
+create table product (
+  product_id serial primary key ,
+  color varchar(200),
+  size varchar (200), 
+  price int
+);
+
+create table discount (
+  discount_id serial primary key ,
+  start_date date ,
+  end_date date ,
+  amount int 
+);
+
+create table cart (
+  cart_id serial primary key ,
+  total_price int ,
+  Purchase_Invoice_id int,
+  discount_id int ,
+  customer_id int 
+);
+
+create table cart_item (
+  cart_item_id seria primary key ,
+  quantity int ,
+  cart_id int ,
+  product_id int 
+);
+
+create table Purchase_Invoice (
+  Purchase_Invoice_id serial primary key ,
+  address_id int ,
+  Purchase_Invoice_date date
+);
+
+--------------------------------------------------------------
+
+ALTER TABLE inventory
+    ADD CONSTRAINT fk_product_id FOREIGN KEY (product_id) REFERENCES product (product_id);
+
+
+ALTER TABLE inventory DROP COLUMN store_id;
+ALTER TABLE inventory
+    ADD CONSTRAINT fk_store_id FOREIGN KEY (inventory_id) REFERENCES store (store_id);
+
+ALTER TABLE cart
+    ADD CONSTRAINT fk_customer_id FOREIGN KEY (customer_id) REFERENCES customer (customer_id);
+
+ALTER TABLE cart
+    ADD CONSTRAINT fk_Purchase_Invoice_id FOREIGN KEY (Purchase_Invoice_id) REFERENCES Purchase_Invoice (Purchase_Invoice_id);
+
+ALTER TABLE cart_item
+    ADD CONSTRAINT fk_cart_id FOREIGN KEY (cart_id) REFERENCES cart (cart_id);
+
+ALTER TABLE cart_item
+    ADD CONSTRAINT fk_product_id FOREIGN KEY (product_id) REFERENCES product (product_id);
+
+ALTER TABLE customer ALTER COLUMN address_id TYPE INT USING address_id::integer;
+ALTER TABLE customer
+    ADD CONSTRAINT fk_address_id FOREIGN KEY (address_id) REFERENCES address (address_id);
+
+ALTER TABLE store
+    ADD CONSTRAINT fk_address_id FOREIGN KEY (address_id) REFERENCES address (address_id);
+
+ALTER TABLE Purchase_Invoice
+    ADD CONSTRAINT fk_address_id FOREIGN KEY (address_id) REFERENCES address (address_id);

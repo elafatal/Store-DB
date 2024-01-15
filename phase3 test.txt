@@ -1,0 +1,142 @@
+تست ویو: بیشترین بالانس 
+
+select customer.customer_id ,first_name , last_name, count(customer.customer_id) from customer 
+join cart
+on customer.customer_id = cart.customer_id join Purchase_Invoice
+on Purchase_Invoice.Purchase_Invoice_id = cart.cart_id
+group by customer.customer_id
+order by count(customer.customer_id) desc
+limit 10
+
+select * from topbalances
+
+------------------------------------------------------------------------------------------------
+
+select first_name , last_name , max(product.price) as price
+from customer join cart on
+customer.customer_id = cart.customer_id join cart_item on
+cart_item.cart_id = cart.cart_id join product on product.product_id=cart_item.product_id
+group by(customer.customer_id)
+order by price DESC
+
+select * from maxprice
+
+-------------------------------------------------------------------------------------------------
+تست materialized view :
+
+ اطالعات مربوط به فروش محصوالت در 10 ماه گذشته:
+
+select customer_id , cart_id , total_price ,cart.Purchase_Invoice_id  ,Purchase_Invoice_date , address_id from cart 
+join Purchase_Invoice 
+on cart.Purchase_Invoice_id = Purchase_Invoice.Purchase_Invoice_id
+where Purchase_Invoice_date > '2022-10-10' order by total_price
+
+select * from last_info
+
+----------------------------------------------------------------------------------------------------
+
+موجودی تیشرت هایی با رنگ های آبی یا قرمز در انبار همراه با اطلاعات آنها:
+
+select inventory_id , product.product_id , color , size , quantity from inventory 
+join product on product.product_id=inventory.product_id 
+where product.color='Red' or product.color='Blue'
+
+select * from Stock
+
+-----------------------------------------------------------------------------------------------
+Function:
+
+1.تابعی بنویسید که گران ترین محصول در یک محدوده قیمت مشخص را پیدا کند:
+
+select  product.product_id , 
+		product.color , 
+		product.size,
+		product.price 
+		from product
+		where product.price = (
+			select max(product.price) from product
+			where product.price >= 300 and product.price <= 710)
+
+			
+select * from max_price(300,710)
+
+-----------------------------------------------------------------------------------------
+
+تابعی بنویسید که مجموع فروش یک محصول را بر اساس شناسه محصول محاسبه2 
+کند:
+
+select sum(product.price) from cart_item join product on cart_item.product_id=product.product_id
+where product.product_id = 28
+
+select * from sum_price(28)
+
+-------------------------------------------------------------------------------------------------
+موجودی کل کالاهای موجود در انبار با شناسه ی مشخص3
+
+select sum(inventory.quantity)  from inventory
+where inventory_id = 3
+
+
+select * from Stock(3)
+-----------------------------------------------------------------------------------------------------
+میانگین قیمت خرید های یک مشتری4.
+
+select avg(product.price)from product 
+join cart_item on cart_item.product_id=product.product_id
+join cart on cart.cart_id=cart_item.cart_id
+join customer on customer.customer_id=cart.cart_id
+where customer.first_name= 'Roselia' and customer.last_name='Yu';
+
+select * from avg_price('Roselia','Yu')
+---------------------------------------------------------------------------------------------------------
+stored procedure:
+
+1.
+select * from product order by price desc
+
+call increaseprice(0)
+
+----------------------------------------------------------------------------------------------------------
+2.
+select * from customer order by credit desc
+
+call max_order(12)
+
+-------------------------------------------------------------------------------------------
+3.
+select * from product order by price desc
+
+call Discount(20)
+-------------------------------------------------------------
+4.
+
+select * from customer order by credit desc
+
+call Q4(20,'Joell','Kinahan')
+
+----------------------------------------------------------
+
+triger:
+
+nsert into cart (cart_id, Purchase_Invoice_id, discount_id, customer_id,total_price) values (607, 390, 2, 328,1012);
+insert into cart (cart_id, Purchase_Invoice_id, discount_id, customer_id,total_price) values (605, 391, 9, 333,2002);
+insert into cart (cart_id, Purchase_Invoice_id, discount_id, customer_id,total_price) values (606, 392, 8, 400,3002);
+
+select * from cart where cart_id=606
+---------------------------------------------------------------
+
+insert into Customer (customer_id, first_name, last_name, phone_number, address_id,credit) values (402, 'Darrick', 'Riha', '+993 (795) 531-9059', 291,20);
+
+select credit from customer where customer_id=402
+
+----------------------------------------------------------------------------------------
+
+insert into Purchase_Invoice (address_id, Purchase_Invoice_id, Purchase_Invoice_date) values (176, 602, '06/5/2023');
+
+select customer_id , cart_id , total_price ,cart.Purchase_Invoice_id  ,Purchase_Invoice_date , address_id from cart 
+join Purchase_Invoice 
+on cart.Purchase_Invoice_id = Purchase_Invoice.Purchase_Invoice_id 
+where Purchase_Invoice_date > '2022-10-10' and  Purchase_Invoice.Purchase_Invoice_id=602 order by total_price
+
+update cart set Purchase_Invoice_id= 602 where cart_id=39
+

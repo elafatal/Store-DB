@@ -1,0 +1,286 @@
+
+
+view:
+
+create view topbalances as
+select customer.customer_id ,first_name , last_name, count(customer.customer_id) from customer 
+join cart
+on customer.customer_id = cart.customer_id join Purchase_Invoice
+on Purchase_Invoice.Purchase_Invoice_id = cart.cart_id
+group by customer.customer_id
+order by count(customer.customer_id) desc
+limit 10
+
+ویو برای قیمت گرانترین محصولی که هر مشتری خریداری کرده همراه با نام آن مشتری:
+
+create view maxprice as select first_name , last_name , max(product.price) as price
+from customer join cart on
+customer.customer_id = cart.customer_id join cart_item on
+cart_item.cart_id = cart.cart_id join product on product.product_id=cart_item.product_id
+group by(customer.customer_id)
+order by price DESC
+
+======================================================================================================
+
+materialized view :
+
+create materialized view last_info as 
+select customer_id , cart_id , total_price ,cart.Purchase_Invoice_id  ,Purchase_Invoice_date , address_id from cart 
+join Purchase_Invoice 
+on cart.Purchase_Invoice_id = Purchase_Invoice.Purchase_Invoice_id
+where Purchase_Invoice_date > '2022-10-10' order by total_price
+
+موجودی تیشرت هایی با رنگ های آبی یا قرمز در انبار همراه با اطلاعات آنها:
+
+create materialized view Stock  as 
+select inventory_id , product.product_id , color , size , quantity from inventory 
+join product on product.product_id=inventory.product_id 
+where product.color='Red' or product.color='Blue'
+
+=======================================================================================================
+
+function:
+
+1.تابعی بنویسید که گران ترین محصول در یک محدوده قیمت مشخص را پیدا کند:
+
+create function max_price (x int , y int)
+returns table (
+		product_id integer ,
+    	        color varchar(200) ,
+	        size varchar(200),
+    	        price integer
+		) 
+as
+$$
+begin
+
+return query 
+select  product.product_id , 
+		product.color , 
+		product.size,
+		product.price 
+		from product
+		where product.price = (
+			select max(product.price) from product
+			where product.price >= x and product.price <= y
+);
+
+end;
+$$
+language plpgsql;
+
+تست: select * from max_price(300,710)
+
+-------------------------------------------------------------------------------------
+
+2.تابعی بنویسید که مجموع فروش یک محصول را بر اساس شناسه محصول محاسبه 
+کند:
+
+create function sum_price(x integer)
+returns integer
+as
+$$
+declare Y integer ;
+begin
+select sum(product.price) into Y from cart_item join product on cart_item.product_id=product.product_id
+where product.product_id = x;
+return Y;
+end;
+$$
+language plpgsql;
+
+
+تست: select * from sum_price(28)
+
+--------------------------------------------------------------------------------------
+
+3.موجودی کل کالاهای موجود در انبار با شناسه ی مشخص:
+
+create function Stock(x integer)
+returns integer
+as
+$$
+declare Y integer ;
+begin
+select sum(inventory.quantity) into Y from inventory
+where inventory_id = x;
+return Y;
+end;
+$$
+language plpgsql;
+
+تست: select * from Stock(3)
+
+------------------------------------------------------------------------------------
+
+4.میانگین قیمت خرید های یک مشتری:
+
+create function avg_price(x varchar (250) , k varchar (250))
+returns integer
+as
+$$
+declare Y integer ;
+begin
+select avg(product.price) into Y from product 
+join cart_item on cart_item.product_id=product.product_id
+join cart on cart.cart_id=cart_item.cart_id
+join customer on customer.customer_id=cart.cart_id
+where customer.first_name= x and customer.last_name=k;
+return Y;
+end;
+$$
+language plpgsql;
+
+تست: select * from avg_price('Amelina','Mirrlees')
+
+==========================================================================================================
+stored procedure:
+
+1.
+create or replace procedure increaseprice (x integer)
+language 'plpgsql'
+as
+$$
+begin
+update product set price = price * (x + 100) / 100;
+commit;
+end;
+$$;
+
+-------------------------------------------------------------------------------------
+
+2.
+create or replace procedure max_order (n integer) 
+language 'plpgsql'
+as
+$$
+begin
+
+update customer set credit = credit + n where customer_id = (select customer_id from (select * from cart
+																					  inner join Purchase_Invoice
+																					  on Purchase_Invoice.Purchase_Invoice_id = cart.Purchase_Invoice_id 
+																					  where Purchase_Invoice_date > '2023-01-07'
+																					 ) as y
+															 group by customer_id
+															 order by sum(total_price)
+															 limit 1);
+
+commit;
+end;
+$$;
+
+---------------------------------------------------------------------------------------
+
+3.تخفیف روی کالاها:
+
+create or replace procedure Discount (x integer)
+language 'plpgsql'
+as
+$$
+begin
+
+update product set price = price * (100 - x) / 100;
+
+commit;
+end;
+$$;
+---------------------------------------------------------------------------------------
+
+4.افزایش اعتبار n درصدی برای مشتری با نام دلخواه
+
+create or replace procedure Q4 (n integer , k varchar (250) , y varchar (250))
+language 'plpgsql'
+as
+$$
+begin
+
+update customer set credit = credit * (100 + n) / 100 where first_name = k and last_name = y;
+commit;
+end;
+$$;
+
+
+==============================================================================================================================
+
+1.
+
+create or replace function fn_discount ()
+RETURNS TRIGGER AS
+$$
+BEGIN
+
+if new.total_price > 1000 then
+	update cart set total_price = new.total_price * 90 / 100
+	where cart_id = new.cart_id;
+
+
+elsif new.total_price > 2000 then
+	update cart set total_price = new.total_price * 80 / 100
+	where cart_id = new.cart_id;
+
+elsif new.total_price > 3000 then
+	update cart set total_price = new.total_price * 70 / 100
+	where cart_id = new.cart_id;
+
+
+else 
+	update cart set total_price = new.total_price 
+	where cart_id = new.cart_id; 
+end if ;
+	
+return new;
+
+
+end;
+
+$$ LANGUAGE 'plpgsql';
+
+
+create trigger trg_discount after insert on cart
+for each row execute procedure fn_discount();
+
+--------------------------------------------------------------------------------------------
+
+2.افزایش 20 درصدی اعتبار برای مشتریان جدید الورود 
+
+create or replace function new_customer()
+RETURNS TRIGGER AS
+$$
+BEGIN
+
+	update customer set credit = new.credit * 120 / 100
+	where customer_id = new.customer_id;
+	
+return new;
+end;
+
+$$ LANGUAGE 'plpgsql';
+
+
+create trigger trg_new_customer after insert on customer
+for each row execute procedure new_customer();
+
+-----------------------------------------------------------------------------------------------
+
+3.
+
+CREATE OR REPLACE FUNCTION refresh_view()
+  RETURNS TRIGGER LANGUAGE plpgsql
+  AS $$
+  BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY last_info;
+  RETURN NULL;
+  END $$;
+  
+  CREATE TRIGGER trg_refreshview
+  AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+  ON cart
+  FOR EACH STATEMENT
+  EXECUTE PROCEDURE refresh_view();
+
+  CREATE TRIGGER trg_refresh_view
+  AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+  ON Purchase_Invoice
+  FOR EACH STATEMENT
+  EXECUTE PROCEDURE refresh_view();
+

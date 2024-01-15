@@ -1,0 +1,102 @@
+
+Q1: 
+select customer.customer_id , first_name , last_name , count(customer.customer_id) from customer 
+inner join cart
+on customer.customer_id = cart.customer_id
+inner join Purchase_Invoice
+on Purchase_Invoice.Purchase_Invoice_id = cart.cart_id
+where Purchase_Invoice_date > '2023-3-27'
+group by customer.customer_id
+order by count(customer.customer_id) desc
+limit 1
+
+---------------------------------------------------------------------------------------
+
+Q2:
+select customer.customer_id , first_name , last_name from
+customer inner join cart 
+on customer.customer_id = cart.customer_id
+inner join Purchase_Invoice
+on cart.Purchase_Invoice_id = Purchase_Invoice.Purchase_Invoice_id
+where Purchase_Invoice_date = '2002-04-13'
+and total_price > 300
+
+-----------------------------------------------------------------------------------------
+
+Q3:
+select inventory.product_id, price , quantity from inventory 
+inner join product
+on product.product_id = inventory.product_id
+where product.product_id = (select product_id  from cart_item group by product_id order by count(product_id) desc limit 1)
+
+--فروشگاه مخصوص تیشرت هست پس کالاها اسم ندارند و به جای اسم کالا، آیدی کالا را برمیگردانیم
+
+-------------------------------------------------------------------------------------------
+
+Q4:
+select  first_name , last_name , max(product.price) as price
+from customer 
+inner join cart on
+customer.customer_id = cart.customer_id
+inner join cart_item on
+cart_item.cart_id = cart.cart_id
+inner join product on product.product_id=cart_item.product_id
+group by(customer.customer_id)
+order by price DESC
+
+--------------------------------------------------------------------------------------------
+
+Q5:
+select  customer_id from customer 
+except(
+	select distinct customer_id  from cart
+	) 
+
+--------------------------------------------------------------------------------------------
+1.تعداد خرید های مشتری با آیدی 28
+
+SELECT count(*) FROM product
+JOIN cart_item ON cart_item.product_id = product.product_id
+JOIN cart ON cart_item.cart_id = cart.cart_id
+JOIN customer ON cart.customer_id = customer.customer_id
+WHERE cart.customer_id = 28 ;
+
+---------------------------------------------------------------------------------------------
+2.نام مشتریانی که در دو ماه اخیر تیشرت هایی با سایز سه ایکس لارج خریداری کرده اند
+
+select first_name , last_name from customer join cart
+on customer.customer_id = cart.customer_id
+join Purchase_Invoice
+on Purchase_Invoice.Purchase_Invoice_id = cart.cart_id
+where Purchase_Invoice_date > '2023-3-27' intersect select first_name , last_name from customer join cart
+on customer.customer_id = cart.customer_id join cart_item on cart_item.cart_id=cart.cart_id 
+join product on product.product_id=cart_item.product_id where product.size='3XL'
+
+---------------------------------------------------------------------------------------------
+3. نام 5 مشتری ای که بیشترین میزان خرید را در فروشگاه داشته اند
+
+select first_name , last_name , count(customer.customer_id) from customer inner join cart
+on customer.customer_id = cart.customer_id inner join Purchase_Invoice
+on Purchase_Invoice.Purchase_Invoice_id = cart.cart_id 
+group by customer.customer_id
+order by count(customer.customer_id) desc
+limit 5
+
+--------------------------------------------------------------------------------------------
+
+4.اسم، فامیل، شماره تلفن و آدرس مشتریانی با 
+اسم  Collen
+یا فامیل Legrave 
+
+select first_name,last_name ,phone_number, address.exacte_address from customer 
+inner join address on address.address_id=customer.address_id
+where first_name='Collen' or last_name='Legrave'
+
+---------------------------------------------------------------------------------------------
+
+5. قیمت سبد های خرید با شناسه ی 28 یا 55 یا 100
+
+SELECT cart_id , total_price FROM cart WHERE cart_id = 28 or cart_id =55 or cart_id =100
+
+----------------------------------------------------------------------------------------------
+
